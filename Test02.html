@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes"> <!-- 隐藏iOS状态栏 -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"> <!-- iOS状态栏样式 -->
+    <title>午餐大转盘 🥗</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', '微软雅黑', sans-serif;
+            -webkit-tap-highlight-color: transparent; /* 取消手机点击高亮 */
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            padding-top: 40px; /* 适配状态栏 */
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 28px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        /* 转盘容器（手机端优先适配） */
+        .spinner-container {
+            position: relative;
+            width: 90vw; /* 占屏幕宽度90% */
+            height: 90vw; /* 正方形，和宽度一致 */
+            max-width: 400px;
+            max-height: 400px;
+            margin-bottom: 30px;
+        }
+        /* 转盘主体 */
+        .spinner {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: conic-gradient(
+                #ff6b6b 0% 8.33%,
+                #4ecdc4 8.33% 16.66%,
+                #ffe66d 16.66% 25%,
+                #1a535c 25% 33.33%,
+                #ff8c42 33.33% 41.66%,
+                #6b48ff 41.66% 50%,
+                #ff6b9d 50% 58.33%,
+                #38b000 58.33% 66.66%,
+                #ffd166 66.66% 75%,
+                #06d6a0 75% 83.33%,
+                #118ab2 83.33% 91.66%,
+                #073b4c 91.66% 100%
+            );
+            position: relative;
+            transition: transform 5s cubic-bezier(0.17, 0.67, 0.13, 0.99);
+            box-shadow: 0 0 30px rgba(0,0,0,0.2);
+            touch-action: none; /* 禁止触摸默认行为 */
+        }
+        /* 转盘中心圆点 */
+        .spinner::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 25px;
+            height: 25px;
+            background: #fff;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 0 10px rgba(0,0,0,0.3);
+            z-index: 2;
+        }
+        /* 餐品名称容器 */
+        .lunch-label {
+            position: absolute;
+            top: 0;
+            left: 50%;
+            width: 50%;
+            height: 50%;
+            transform-origin: bottom left;
+            display: flex;
+            align-items: center;
+            padding-left: 15px;
+        }
+        /* 餐品名称文字（手机端适配） */
+        .lunch-text {
+            color: #fff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+            width: 100px;
+            transform: rotate(45deg);
+            transform-origin: left center;
+            white-space: nowrap; /* 禁止文字换行 */
+        }
+        /* 指针（手机端放大，更易看清） */
+        .pointer {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 18px solid transparent;
+            border-right: 18px solid transparent;
+            border-bottom: 35px solid #e74c3c;
+            z-index: 10;
+            filter: drop-shadow(0 3px 5px rgba(0,0,0,0.2));
+        }
+        /* 控制按钮（手机端放大，方便触摸） */
+        .control-btn {
+            padding: 15px 40px;
+            font-size: 20px;
+            font-weight: bold;
+            color: #fff;
+            background: #2c3e50;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 80%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+        .control-btn:hover, .control-btn:active {
+            background: #34495e;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        /* 结果显示（手机端放大） */
+        .result {
+            margin-top: 25px;
+            font-size: 22px;
+            color: #2c3e50;
+            font-weight: bold;
+            height: 35px;
+            text-align: center;
+            width: 100%;
+            padding: 0 10px;
+        }
+        /* 底部提示（App风格） */
+        .tip {
+            position: fixed;
+            bottom: 20px;
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🍽️ 午餐大转盘 🍽️</h1>
+    
+    <div class="spinner-container">
+        <div class="spinner" id="spinner">
+            <!-- 餐品名称动态生成 -->
+        </div>
+        <div class="pointer"></div>
+    </div>
+
+    <button class="control-btn" id="spinBtn">点击启动转盘</button>
+    <div class="result" id="result"></div>
+    <div class="tip">📱 支持触摸点击，安装后更像原生App～</div>
+
+    <script>
+        // 午餐选项（可自定义）
+        const lunchOptions = [
+            "牛肉面", "盖浇饭", "麻辣烫", "寿司",
+            "汉堡薯条", "减脂沙拉", "螺蛳粉", "饺子",
+            "炒饭", "过桥米线", "馄饨", "披萨"
+        ];
+
+        const spinner = document.getElementById('spinner');
+        const spinBtn = document.getElementById('spinBtn');
+        const result = document.getElementById('result');
+
+        let isSpinning = false;
+        const segmentAngle = 360 / lunchOptions.length;
+
+        // 生成餐品标签
+        function renderLunchLabels() {
+            lunchOptions.forEach((lunch, index) => {
+                const label = document.createElement('div');
+                label.className = 'lunch-label';
+                label.style.transform = `rotate(${index * segmentAngle}deg)`;
+                
+                const text = document.createElement('div');
+                text.className = 'lunch-text';
+                text.textContent = lunch;
+                
+                label.appendChild(text);
+                spinner.appendChild(label);
+            });
+        }
+
+        renderLunchLabels();
+
+        // 转盘逻辑（支持手机点击）
+        spinBtn.addEventListener('click', () => {
+            if (isSpinning) return;
+
+            result.textContent = '';
+            isSpinning = true;
+            spinBtn.textContent = '转动中...';
+            spinBtn.disabled = true;
+
+            const randomRounds = 3 + Math.random() * 2;
+            const randomAngle = Math.random() * 360;
+            const totalAngle = randomRounds * 360 + randomAngle;
+
+            spinner.style.transform = `rotate(${totalAngle}deg)`;
+
+            setTimeout(() => {
+                isSpinning = false;
+                spinBtn.textContent = '点击启动转盘';
+                spinBtn.disabled = false;
+
+                const finalAngle = totalAngle % 360;
+                const index = Math.floor((360 - finalAngle) / segmentAngle) % lunchOptions.length;
+                const selectedLunch = lunchOptions[index];
+
+                result.textContent = `🎉 今日午餐：${selectedLunch} 🎉`;
+            }, 5000);
+        });
+
+        // 可选：支持手机滑动转盘（增强交互）
+        let startX, startY, startAngle = 0, currentAngle = 0;
+        spinner.addEventListener('touchstart', (e) => {
+            if (isSpinning) return;
+            const touch = e.touches[0];
+            startX = touch.clientX;
+            startY = touch.clientY;
+            startAngle = currentAngle;
+        });
+
+        spinner.addEventListener('touchmove', (e) => {
+            if (isSpinning) return;
+            const touch = e.touches[0];
+            const x = touch.clientX;
+            const y = touch.clientY;
+            // 计算滑动角度
+            const startRad = Math.atan2(startY - spinner.offsetTop - spinner.offsetHeight/2, startX - spinner.offsetLeft - spinner.offsetWidth/2);
+            const currentRad = Math.atan2(y - spinner.offsetTop - spinner.offsetHeight/2, x - spinner.offsetLeft - spinner.offsetWidth/2);
+            currentAngle = startAngle + (currentRad - startRad) * (180 / Math.PI);
+            spinner.style.transform = `rotate(${currentAngle}deg)`;
+        });
+    </script>
+</body>
+</html>
